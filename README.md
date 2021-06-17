@@ -1,5 +1,6 @@
 ## infping Monitoring with fping/InfluxDB/Grafana + Daemon SystemD
-Parse fping output, store result in influxdb 1.2, and visualizing with grafana.
+Parse fping output, store result in influxdb 1.x, and visualize with grafana.
+
 
 #### Requirement:
 ##### Golang:
@@ -23,9 +24,16 @@ retentionpolicy = "infinite"
 user = "fping"
 pass = "fpingdakjwgkawjnmbjhwtuia"
 
-[consul]
+[logs]
+logfile = "/var/log/infping/infping.log"
 
-url = "http://a:a@consul1.dx/v1/catalog/nodes"
+[hosts]
+
+hosts = [
+    "192.168.0.1",
+    "192.168.0.2",
+]
+
 ```
 #### Install infping:
 ```
@@ -36,16 +44,12 @@ $ sudo systemctl status infping.service
 
 #### Output
 ```
-2017/06/21 20:01:02 Connected to influxdb! (dur:1.996646ms, ver:1.2.4)
-2017/06/21 20:01:02 Going to ping the following ips: [192.168.200.121 192.168.114.30]
-2017/06/21 20:01:12 Node:b827eb3068d3am13k, IP:192.168.200.121, loss: 0, min: 5.83, avg: 17.3, max: 76.4
-2017/06/21 20:01:12 Node:consulnode, IP:192.168.114.30, loss: 0, min: 0.47, avg: 0.59, max: 0.68
+Feb 24 15:14:30 ip-172-19-64-10 infping: 2021/02/24 15:14:30 Connected to influxdb! (dur:9.877542ms, ver:1.8.0)
+Feb 24 15:14:30 ip-172-19-64-10 infping: 2021/02/24 15:14:30 Going to ping the following ips: [192.168.0.1 192.168.0.2]
+Feb 24 15:14:40 ip-172-19-64-10 infping: 2021/02/24 15:14:40 IP:192.168.0.1, send:10, recv:10 loss: 0, min: 1.95, avg: 2.13, max: 2.70
+Feb 24 15:14:40 ip-172-19-64-10 infping: 2021/02/24 15:14:40 IP:192.168.0.2, send:10, recv:10 loss: 0, min: 289, avg: 289, max: 291
 ```
 
-#### Consul Members
-```
-$ consul members
-Node        		Address              Status  Type    Build  Protocol  DC
-consulnode  		192.168.114.30:8301  alive   server  0.8.3  2         dc1
-b827eb3068d3am13k	192.168.200.121:8301 alive   client  0.8.3  2         dc1
-```
+#### Todo
+Replace clientv2 for InfluxDB 1.x with InfluxDB 2 Go Client 
+

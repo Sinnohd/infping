@@ -2,96 +2,23 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"github.com/influxdata/influxdb/client/v2"
-	"github.com/pelletier/go-toml"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	client "github.com/influxdata/influxdb1-client/v2"
+	toml "github.com/pelletier/go-toml"
 )
 
 const (
 	path = "config.toml"
 )
 
-var (
-	newnodes      = make(map[string]string)
-	oldnodes      = make(map[string]string)
-	change   bool = false
-)
-
-type Consul []struct {
-	ID              string `json:"ID"`
-	Node            string `json:"Node"`
-	Address         string `json:"Address"`
-	Datacenter      string `json:"Datacenter"`
-	TaggedAddresses struct {
-		Lan string `json:"lan"`
-		Wan string `json:"wan"`
-	} `json:"TaggedAddresses"`
-	Meta struct {
-	} `json:"Meta"`
-	CreateIndex int `json:"CreateIndex"`
-	ModifyIndex int `json:"ModifyIndex"`
-}
-
-func watchNodes(url string) {
-	var first bool = true
-	for {
-		newnodes = getNodes(url)
-		// Check if any change of consul nodes
-		if reflect.DeepEqual(newnodes, oldnodes) {
-			// give time for requests newnodes
-			time.Sleep(5 * time.Second)
-		} else {
-			if first {
-				first = false
-			} else {
-				change = true
-			}
-			oldnodes = newnodes
-		}
-	}
-}
-
-func getNodes(url string) (nodes map[string]string) {
-	nodes = make(map[string]string)
-	data := getJson(url)
-	cfg := Consul{}
-	err := json.Unmarshal([]byte(data), &cfg)
-	perr(err)
-	for v := range cfg {
-		nodes[cfg[v].Address] = cfg[v].Node
-	}
-	return
-}
-
-func getJson(url string) (json string) {
-	resp, err := http.Get(url)
-	herr(err)
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	perr(err)
-
-	if resp.StatusCode == 200 {
-		json = string(body)
-	} else {
-		log.Println(resp.Status)
-		json = "[]"
-	}
-
-	return json
-}
-
+// Hard error, log & exit (equivalent to log.Fatal)
 func herr(err error) {
 	if err != nil {
 		log.Println(err)
@@ -99,6 +26,7 @@ func herr(err error) {
 	}
 }
 
+// Soft error, print out and go forward
 func perr(err error) {
 	if err != nil {
 		log.Println(err)
@@ -109,26 +37,25 @@ func slashSplitter(c rune) bool {
 	return c == '/'
 }
 
-func readPoints(config *toml.Tree, con client.Client) {
-START:
-	nodes := newnodes
+func readPoints(config *toml.Tree, con client.Client, logger *log.Logger) {
+	nodes := config.Get("hosts.hosts").([]interface{})
 	args := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
 	list := []string{}
-	for u := range nodes {
-		ip := u
+	for _, u := range nodes {
+		ip, _ := u.(string)
 		args = append(args, ip)
 		list = append(list, ip)
 
 	}
 
-	log.Printf("Going to ping the following ips: %v", list)
-	cmd := exec.Command("/usr/bin/fping", args...)
+	logger.Printf("Going to ping the following ips: %v", list)
+	cmd := exec.Command("/usr/sbin/fping", args...)
 
 	stdout, err := cmd.StdoutPipe()
 	herr(err)
 	stderr, err := cmd.StderrPipe()
 	herr(err)
-	cmd.Start()
+	err = cmd.Start()
 	perr(err)
 
 	buff := bufio.NewScanner(stderr)
@@ -150,26 +77,18 @@ START:
 				td := strings.FieldsFunc(times, slashSplitter)
 				min, avg, max = td[0], td[1], td[2]
 			}
-			log.Printf("Node:%s, IP:%s, send:%s, recv:%s loss: %s, min: %s, avg: %s, max: %s", nodes[ip], ip, sent, recv, lossp, min, avg, max)
-			writePoints(config, con, nodes, ip, sent, recv, lossp, min, avg, max)
+			logger.Printf("IP:%s, send:%s, recv:%s loss: %s, min: %s, avg: %s, max: %s", ip, sent, recv, lossp, min, avg, max)
+			writePoints(config, logger, con, ip, sent, recv, lossp, min, avg, max)
 		}
 
-		// Restart scan if nodes change
-		if change {
-			log.Println("Nodes updated : Restarting fping")
-			change = false
-			cmd.Process.Kill()
-			cmd.Wait()
-			goto START
-		}
 	}
 	std := bufio.NewReader(stdout)
 	line, err := std.ReadString('\n')
 	perr(err)
-	log.Printf("stdout:%s", line)
+	logger.Printf("stdout:%s", line)
 }
 
-func writePoints(config *toml.Tree, con client.Client, nodes map[string]string, ip string, sent string, recv string, lossp string, min string, avg string, max string) {
+func writePoints(config *toml.Tree, logger *log.Logger, con client.Client, ip string, sent string, recv string, lossp string, min string, avg string, max string) {
 	db := config.Get("influxdb.db").(string)
 	ms := config.Get("influxdb.measurement").(string)
 	ps := config.Get("influxdb.precision").(string)
@@ -199,26 +118,20 @@ func writePoints(config *toml.Tree, con client.Client, nodes map[string]string, 
 		Precision:       ps,
 		RetentionPolicy: rp,
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	herr(err)
 
 	// Create a point and add to batch
 	tags := map[string]string{
-		"node": nodes[ip],
 		"addr": ip,
 	}
 
 	pt, err := client.NewPoint(ms, tags, fields, time.Now())
-	if err != nil {
-		log.Fatal(err)
-	}
+	herr(err)
 	bp.AddPoint(pt)
 
 	// Write the batch
-	if err := con.Write(bp); err != nil {
-		log.Fatal(err)
-	}
+	err = con.Write(bp)
+	herr(err)
 }
 
 func main() {
@@ -229,6 +142,15 @@ func main() {
 	port := config.Get("influxdb.port").(string)
 	username := config.Get("influxdb.user").(string)
 	password := config.Get("influxdb.pass").(string)
+
+	logfile := config.Get("logs.logfile").(string)
+
+	f, err := os.OpenFile(logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	logger := log.New(f, "", log.LstdFlags)
 
 	addr := fmt.Sprintf("http://%s:%s", host, port)
 
@@ -243,13 +165,7 @@ func main() {
 	dur, ver, err := con.Ping(1)
 	herr(err)
 
-	log.Printf("Connected to influxdb! (dur:%v, ver:%s)", dur, ver)
-
-	url := config.Get("consul.url").(string)
-	newnodes = getNodes(url)
-
-	go watchNodes(url)
-
-	readPoints(config, con)
+	logger.Printf("Connected to influxdb! (dur:%v, ver:%s)", dur, ver)
+	readPoints(config, con, logger)
 
 }

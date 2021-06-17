@@ -9,6 +9,12 @@ retentionpolicy = "infinite"
 user = "fping"
 pass = "fpingdakjwgkawjnmbjhwtuia"
 
-[consul]
+[logs]
+logfile = "/var/log/infping/infping.log"
 
-url = "http://127.0.0.1:8500/v1/catalog/nodes"
+[hosts]
+hosts = [
+    "192.168.0.1",
+    "192.168.0.2",
+]
+
