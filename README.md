@@ -1,3 +1,5 @@
+[![Known Vulnerabilities](https://snyk.io/test/github/Sinnohd/fping/badge.svg)](https://snyk.io/test/github/Sinnohd/fping)
+
 ## infping Monitoring with fping/InfluxDB/Grafana + Daemon SystemD
 Parse fping output, store result in influxdb 1.x, and visualize with grafana.
 
@@ -15,14 +17,15 @@ $ sudo apt-get install fping
 ```
 [influxdb]
 
-host = "192.168.114.30"
+host = "localhost"
 port = "8086"
-db = "fping"
+org = "acme"
+bucket = "fping"
 measurement = "ping"
 precision = "ms"
 retentionpolicy = "infinite"
-user = "fping"
-pass = "fpingdakjwgkawjnmbjhwtuia"
+token = "<Influx v2 Auth Token>"
+fping = "/usr/bin/fping"
 
 [logs]
 logfile = "/var/log/infping/infping.log"
