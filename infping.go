@@ -10,7 +10,9 @@ import (
 	"strings"
 	"time"
 
-	client "github.com/influxdata/influxdb1-client/v2"
+	//client "github.com/influxdata/influxdb1-client/v2"
+
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	toml "github.com/pelletier/go-toml"
 )
 
@@ -37,7 +39,7 @@ func slashSplitter(c rune) bool {
 	return c == '/'
 }
 
-func readPoints(config *toml.Tree, con client.Client, logger *log.Logger) {
+func readPoints(config *toml.Tree, client influxdb2.Client, logger *log.Logger) {
 	nodes := config.Get("hosts.hosts").([]interface{})
 	args := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
 	list := []string{}
@@ -47,9 +49,9 @@ func readPoints(config *toml.Tree, con client.Client, logger *log.Logger) {
 		list = append(list, ip)
 
 	}
-
+	//pinger, err := ping.NewPinger(target)
 	logger.Printf("Going to ping the following ips: %v", list)
-	cmd := exec.Command("/usr/sbin/fping", args...)
+	cmd := exec.Command(config.Get("influxdb.fping").(string), args...)
 
 	stdout, err := cmd.StdoutPipe()
 	herr(err)
@@ -78,7 +80,7 @@ func readPoints(config *toml.Tree, con client.Client, logger *log.Logger) {
 				min, avg, max = td[0], td[1], td[2]
 			}
 			logger.Printf("IP:%s, send:%s, recv:%s loss: %s, min: %s, avg: %s, max: %s", ip, sent, recv, lossp, min, avg, max)
-			writePoints(config, logger, con, ip, sent, recv, lossp, min, avg, max)
+			writePoints(config, logger, client, ip, sent, recv, lossp, min, avg, max)
 		}
 
 	}
@@ -88,11 +90,10 @@ func readPoints(config *toml.Tree, con client.Client, logger *log.Logger) {
 	logger.Printf("stdout:%s", line)
 }
 
-func writePoints(config *toml.Tree, logger *log.Logger, con client.Client, ip string, sent string, recv string, lossp string, min string, avg string, max string) {
-	db := config.Get("influxdb.db").(string)
+func writePoints(config *toml.Tree, logger *log.Logger, client influxdb2.Client, ip string, sent string, recv string, lossp string, min string, avg string, max string) {
 	ms := config.Get("influxdb.measurement").(string)
-	ps := config.Get("influxdb.precision").(string)
-	rp := config.Get("influxdb.retentionpolicy").(string)
+	org := config.Get("influxdb.org").(string)
+	bucket := config.Get("influxdb.bucket").(string)
 
 	loss, _ := strconv.Atoi(lossp)
 	fields := map[string]interface{}{}
@@ -112,26 +113,16 @@ func writePoints(config *toml.Tree, logger *log.Logger, con client.Client, ip st
 		}
 	}
 
-	// Create a new point batch
-	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-		Database:        db,
-		Precision:       ps,
-		RetentionPolicy: rp,
-	})
-	herr(err)
-
 	// Create a point and add to batch
 	tags := map[string]string{
 		"addr": ip,
 	}
 
-	pt, err := client.NewPoint(ms, tags, fields, time.Now())
-	herr(err)
-	bp.AddPoint(pt)
-
-	// Write the batch
-	err = con.Write(bp)
-	herr(err)
+	writeApi := client.WriteAPI(org, bucket)
+	// create point
+	p := influxdb2.NewPoint(ms, tags, fields, time.Now())
+	writeApi.WritePoint(p)
+	writeApi.Flush()
 }
 
 func main() {
@@ -140,8 +131,7 @@ func main() {
 
 	host := config.Get("influxdb.host").(string)
 	port := config.Get("influxdb.port").(string)
-	username := config.Get("influxdb.user").(string)
-	password := config.Get("influxdb.pass").(string)
+	token := config.Get("influxdb.token").(string)
 
 	logfile := config.Get("logs.logfile").(string)
 
@@ -155,17 +145,12 @@ func main() {
 	addr := fmt.Sprintf("http://%s:%s", host, port)
 
 	// Create a new HTTPClient
-	con, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr:     addr,
-		Username: username,
-		Password: password,
-	})
-	herr(err)
+	client := influxdb2.NewClientWithOptions(addr, token,
+		influxdb2.DefaultOptions().SetBatchSize(20))
 
-	dur, ver, err := con.Ping(1)
-	herr(err)
+	logger.Printf("Connected to influxdb!")
+	readPoints(config, client, logger)
 
-	logger.Printf("Connected to influxdb! (dur:%v, ver:%s)", dur, ver)
-	readPoints(config, con, logger)
+	client.Close()
 
 }

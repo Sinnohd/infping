@@ -1,13 +1,14 @@
 [influxdb]
 
-host = "192.168.114.30"
+host = "localhost"
 port = "8086"
-db = "fping"
+org = "acme"
+bucket = "fping"
 measurement = "ping"
 precision = "ms"
 retentionpolicy = "infinite"
-user = "fping"
-pass = "fpingdakjwgkawjnmbjhwtuia"
+token = "<InfluxDB v2 API Token>"
+fping = "/usr/bin/fping"
 
 [logs]
 logfile = "/var/log/infping/infping.log"
