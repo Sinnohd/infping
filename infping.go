@@ -134,13 +134,15 @@ func main() {
 	token := config.Get("influxdb.token").(string)
 
 	logfile := config.Get("logs.logfile").(string)
+	logger := log.New(os.Stdout, "", log.LstdFlags)
 
 	f, err := os.OpenFile(logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
+	} else {
+		logger.SetOutput(f)
 	}
 	defer f.Close()
-	logger := log.New(f, "", log.LstdFlags)
 
 	addr := fmt.Sprintf("http://%s:%s", host, port)
 

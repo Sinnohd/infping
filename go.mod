@@ -1,4 +1,4 @@
-module github.com/Sinnohd/fping
+module github.com/Sinnohd/infping
 
 go 1.17
 
