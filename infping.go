@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	//client "github.com/influxdata/influxdb1-client/v2"
-
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	toml "github.com/pelletier/go-toml"
 )
@@ -142,7 +140,12 @@ func main() {
 	} else {
 		logger.SetOutput(f)
 	}
-	defer f.Close()
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			logger.Printf("Error closing file: %s\n", err)
+		}
+	}()
 
 	addr := fmt.Sprintf("http://%s:%s", host, port)
 

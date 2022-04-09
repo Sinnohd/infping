@@ -1,6 +1,5 @@
 FROM alpine:3.15.4
 
-LABEL maintainer="jens@brey.biz"
 WORKDIR /opt/infping
 RUN apk add --no-cache fping
 COPY infping /opt/infping/infping

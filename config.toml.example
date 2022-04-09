@@ -5,8 +5,6 @@ port = "8086"
 org = "acme"
 bucket = "fping"
 measurement = "ping"
-precision = "ms"
-retentionpolicy = "infinite"
 token = "<InfluxDB v2 API Token>"
 fping = "/usr/bin/fping"
 
