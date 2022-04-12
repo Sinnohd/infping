@@ -4,7 +4,9 @@
 Parse fping output, store result in influxdb 2.x and visualize with grafana.
 
 #### History
-infping was originally developed by [@torhve]( https://github.com/torhve ) (check also his [blog post](https://hveem.no/visualizing-latency-variance-with-grafana) ) as a more modern replacement for Smokeping. It was than forked and further developed for usage with consul for autodiscovery of targets by  [@umards]( https://github.com/umardx ) and now adjusted to run inside a Docker container and with InfluxDB 2.0 by me.
+infping was originally developed by [@torhve]( https://github.com/torhve ) (check also his [blog post](https://hveem.no/visualizing-latency-variance-with-grafana) ) as a more modern replacement for Smokeping. It was than forked and further developed for usage with Consul for autodiscovery of targets by  [@umardx]( https://github.com/umardx ). 
+
+I rolled back the Consul part and adjusted the service to fit into a container based environment and be compatible with InfluxDB 2.x.
 
 #### Requirements:
 ##### Golang:
@@ -54,9 +56,11 @@ ID			Description	Token												User Name	User ID			Permissions
 ```
 
 #### Edit config.toml:
-Check where fping binary is located.
-If the service isn't able to create the logfile at the configured location, output will be re-directed to stdout.
+Check the path to the fping binary.
+For Docker containers: If the service isn't able to create the logfile at the configured location, output will be re-directed to stdout, which is preferred for containers.
 
+Example configuration:
+ 
 ```
 [influxdb]
 
@@ -112,5 +116,5 @@ Feb 24 15:14:40 ip-172-19-64-10 infping: 2021/02/24 15:14:40 IP:192.168.0.2, sen
 ```
 
 #### Todo
-
+Replace call to fping binary with [go-ping](https://github.com/go-ping/ping) lib.
 
