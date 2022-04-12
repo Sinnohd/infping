@@ -3,6 +3,9 @@
 ## infping Monitoring with fping/InfluxDB/Grafana + Daemon SystemD
 Parse fping output, store result in influxdb 2.x and visualize with grafana.
 
+#### History
+infping was originally developed by [@torhve]( https://github.com/torhve ) (check also his [blog post](https://hveem.no/visualizing-latency-variance-with-grafana) ) as a more modern replacement for Smokeping. It was than forked and further developed for usage with consul for autodiscovery of targets by  [@umards]( https://github.com/umardx ) and now adjusted to run inside a Docker container and with InfluxDB 2.0 by me.
+
 #### Requirements:
 ##### Golang:
 Install golang : https://golang.org/doc/install
