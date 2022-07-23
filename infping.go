@@ -38,17 +38,13 @@ func slashSplitter(c rune) bool {
 }
 
 func readPoints(config InfConfig, client influxdb2.Client, logger *log.Logger) {
-	//nodes := config.hosts.hosts.([]interface{})
 	nodes := config.hosts.hosts
 	args := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
 	list := []string{}
-	for _, u := range nodes {
-		ip := u
-		args = append(args, ip)
-		list = append(list, ip)
-
+	for _, node := range nodes {
+		args = append(args, node)
+		list = append(list, node)
 	}
-	//pinger, err := ping.NewPinger(target)
 	logger.Printf("Going to ping the following ips: %v", list)
 	cmd := exec.Command(config.influxdb.fping, args...)
 
@@ -124,6 +120,7 @@ func writePoints(config InfConfig, logger *log.Logger, client influxdb2.Client, 
 	writeApi.Flush()
 }
 
+// begin config file structs
 type InfConfig struct {
 	influxdb influxdb
 	logs logs
@@ -147,6 +144,7 @@ type logs struct {
 type hosts struct {
 	hosts []string
 }
+// end config file structs
 
 func main() {
 	var config InfConfig
