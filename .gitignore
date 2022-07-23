@@ -1,3 +1,4 @@
 config.toml
 infping.service
 infping
+go.sum
