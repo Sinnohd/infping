@@ -11,7 +11,7 @@ import (
 	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	toml "github.com/pelletier/go-toml"
+	toml "github.com/pelletier/go-toml/v2"
 )
 
 const (
@@ -37,19 +37,20 @@ func slashSplitter(c rune) bool {
 	return c == '/'
 }
 
-func readPoints(config *toml.Tree, client influxdb2.Client, logger *log.Logger) {
-	nodes := config.Get("hosts.hosts").([]interface{})
+func readPoints(config InfConfig, client influxdb2.Client, logger *log.Logger) {
+	//nodes := config.hosts.hosts.([]interface{})
+	nodes := config.hosts.hosts
 	args := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
 	list := []string{}
 	for _, u := range nodes {
-		ip, _ := u.(string)
+		ip := u
 		args = append(args, ip)
 		list = append(list, ip)
 
 	}
 	//pinger, err := ping.NewPinger(target)
 	logger.Printf("Going to ping the following ips: %v", list)
-	cmd := exec.Command(config.Get("influxdb.fping").(string), args...)
+	cmd := exec.Command(config.influxdb.fping, args...)
 
 	stdout, err := cmd.StdoutPipe()
 	herr(err)
@@ -88,10 +89,10 @@ func readPoints(config *toml.Tree, client influxdb2.Client, logger *log.Logger) 
 	logger.Printf("stdout:%s", line)
 }
 
-func writePoints(config *toml.Tree, logger *log.Logger, client influxdb2.Client, ip string, sent string, recv string, lossp string, min string, avg string, max string) {
-	ms := config.Get("influxdb.measurement").(string)
-	org := config.Get("influxdb.org").(string)
-	bucket := config.Get("influxdb.bucket").(string)
+func writePoints(config InfConfig, logger *log.Logger, client influxdb2.Client, ip string, sent string, recv string, lossp string, min string, avg string, max string) {
+	ms := config.influxdb.measurement
+	org := config.influxdb.org
+	bucket := config.influxdb.bucket
 
 	loss, _ := strconv.Atoi(lossp)
 	fields := map[string]interface{}{}
@@ -123,15 +124,42 @@ func writePoints(config *toml.Tree, logger *log.Logger, client influxdb2.Client,
 	writeApi.Flush()
 }
 
+type InfConfig struct {
+	influxdb influxdb
+	logs logs
+	hosts hosts
+}
+
+type influxdb struct {
+	host string
+	port string
+	org string
+	bucket string
+	measurement string
+	token string
+	fping string
+}
+
+type logs struct {
+	logfile string
+}
+
+type hosts struct {
+	hosts []string
+}
+
 func main() {
-	config, err := toml.LoadFile(path)
+	var config InfConfig
+	file, err := os.ReadFile(path)
+	herr(err)
+	err = toml.Unmarshal(file, &config)
 	herr(err)
 
-	host := config.Get("influxdb.host").(string)
-	port := config.Get("influxdb.port").(string)
-	token := config.Get("influxdb.token").(string)
+	host := config.influxdb.host
+	port := config.influxdb.port
+	token := config.influxdb.token
 
-	logfile := config.Get("logs.logfile").(string)
+	logfile := config.logs.logfile
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 
 	f, err := os.OpenFile(logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
