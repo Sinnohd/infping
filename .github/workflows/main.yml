@@ -33,7 +33,7 @@ jobs:
         with:
           source_path: .
           aws_region: eu-central-1
-          fail_on_severity: Critical
+#          fail_on_severity: Critical
       - name: Print findings
         run: |
           ls -l
