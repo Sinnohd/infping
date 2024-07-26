@@ -42,7 +42,7 @@ jobs:
       # If you want content in security scanning, you’ll need to enable codescanning by going into github.
       # This only works if Advanced Security is enabled. This needs an extra license for private organizations. 
       # https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning-for-a-repository
-      #- name: Upload result
-      #  uses: github/codeql-action/upload-sarif@v2
-      #  with:
-      #    sarif_file: codeguru-security-results.sarif.json
+      - name: Upload result
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: codeguru-security-results.sarif.json
