@@ -1,6 +1,6 @@
 module github.com/Sinnohd/infping
 
-go 1.17
+go 1.21
 
 require (
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
