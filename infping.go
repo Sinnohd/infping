@@ -39,17 +39,17 @@ func slashSplitter(c rune) bool {
 
 func readPoints(config *toml.Tree, client influxdb2.Client, logger *log.Logger) {
 	nodes := config.Get("hosts.hosts").([]interface{})
-	args := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
+	fping := []string{"-B 1", "-D", "-r0", "-O 0", "-Q 10", "-p 1000", "-l"}
 	list := []string{}
 	for _, u := range nodes {
 		ip, _ := u.(string)
-		args = append(args, ip)
+		fping = append(fping, ip)
 		list = append(list, ip)
 
 	}
 	//pinger, err := ping.NewPinger(target)
 	logger.Printf("Going to ping the following ips: %v", list)
-	cmd := exec.Command(config.Get("influxdb.fping").(string), args...)
+	cmd := exec.Command(config.Get("influxdb.fping").(string), fping...)
 
 	stdout, err := cmd.StdoutPipe()
 	herr(err)
