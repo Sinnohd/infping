@@ -1,11 +1,10 @@
 module github.com/Sinnohd/infping
 
-go 1.21
+go 1.25.0
 
 require (
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
 	github.com/pelletier/go-toml v1.9.5
-
 )
 
 require (
@@ -14,5 +13,5 @@ require (
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
 )
